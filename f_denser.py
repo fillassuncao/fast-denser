@@ -274,13 +274,13 @@ def mutation(individual, grammar, add_layer, re_use_layer, remove_layer, add_con
                 
                 for _key_ in sorted(module.connections):
                     if _key_ > remove_idx:
-                        if remove_idx in module.connections[_key_]:
+                        if _key_ > remove_idx+1 and remove_idx in module.connections[_key_]:
                             module.connections[_key_].remove(remove_idx)
 
                         for value_idx, value in enumerate(module.connections[_key_]):
                             if value >= remove_idx:
                                 module.connections[_key_][value_idx] -= 1
-                        module.connections[_key_-1] = module.connections.pop(_key_)
+                        module.connections[_key_-1] = list(set(module.connections.pop(_key_)))
 
                 if remove_idx == 0:
                     module.connections[0] = [-1]
