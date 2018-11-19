@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 import random
 from sklearn.cross_validation import train_test_split
 import keras
@@ -11,7 +13,6 @@ import tensorflow
 import numpy as np
 
 DEBUG = False
-INIT_MAX = {'features':[2,3,4], 'classification':[1]}
 
 class TimedStopping(keras.callbacks.Callback):
     """

@@ -78,7 +78,7 @@ class Config:
         self.grammar_path = 'modules.grammar'
         self.network_structure = [('features', 30), ('classification', 10)]
         self.network_structure_init = {'features':[2,3,4], 'classification':[1]}
-        self.levels_back = {'features': 5, 'classification': 1}
+        self.levels_back = {'features': 1, 'classification': 1}
         self.max_epochs = 100000
         self.train_time = 10*60
         self.macro_structure = ['learning']
@@ -354,8 +354,6 @@ def main(run):
         np.random.set_state(pkl_numpy)
         total_epochs = get_total_epochs(config.save_path, run, last_gen)
 
-    print last_gen
-
     for gen in range(last_gen+1, config.num_generations):
 
         if total_epochs is not None and total_epochs >= config.max_epochs:
@@ -383,7 +381,7 @@ def main(run):
 
 if __name__ == '__main__':
     if len(argv) != 2:
-        print('python multi_layer.py <run>')
+        print('python f_denser.py <run>')
         exit(-1)
 
     in_run = int(argv[1])
