@@ -35,7 +35,7 @@ Currently this codebase only works with python 2. The following libraries are ne
 
 -g [mandatory] path to the grammar file to be used. Check example/modules.grammar for an example
 
-### Run example
+### Usage example
 
 The example seeks for Convolutional Neural Networks (CNNs) for the classification of the Fashion-MNIST dataset.
 
@@ -49,18 +49,19 @@ The parameters are encoded in the production rules using the following format: [
 
 |      Layer Type     |                                                       Parameters                                                       |
 |:-------------------:|:----------------------------------------------------------------------------------------------------------------------:|
-|    Convolution    | Number of filters (num-filters), shape of the filters (filter-shape), stride, padding, activation function (act), bias |
+|    Convolution      | Number of filters (num-filters), shape of the filters (filter-shape), stride, padding, activation function (act), bias |
 |       Pooling       |                                       Kernel size (kernel-size), stride, padding                                       |
 |   Fully-Connected   |                              Number of units (num-units), activation function (act), bias                              |
 |       Dropout       |                                                          Rate                                                          |
 | Batch-Normalization |                                                            -                                                           |
 
 For the learning algorithms the follow parameters need to be defined:
-|      Learning Algorithm |                                                       Parameters                                                       |
-|:-----------------------:|:----------------------------------------------------------------------------------------------------------------------:|
+
+|      Learning Algorithm |                                                       Parameters                                                                          |
+|:-----------------------:|:-----------------------------------------------------------------------------------------------------------------------------------------:|
 |    Gradient-descent     | Learning rate (lr), momentum, lr decay (decay), nesterov, batch size (batch_size), number of epochs (epochs), early stopping (early_stop) |
-|       Adam              | Learning rate (lr), beta1, beta2, lr decay (decay), batch size (batch_size), number of epochs (epochs), early stopping (early_stop)                                        |
-|   RMSProp               | Learning rate (lr), rho, lr decay (decay), batch size (batch_size), number of epochs (epochs), early stopping (early_stop)                             |
+|          Adam           |    Learning rate (lr), beta1, beta2, lr decay (decay), batch size (batch_size), number of epochs (epochs), early stopping (early_stop)    |
+|         RMSProp         |        Learning rate (lr), rho, lr decay (decay), batch size (batch_size), number of epochs (epochs), early stopping (early_stop)         |
 
 The current grammar example focuses on the simultaneous optimisation of the topoogy and learning strategy. In case the user only intends to optimise the topology, the learning can be fixed by replacing the learning production rule by for example: \" \<learning\> ::= learning:gradient-descent lr:0.01 momentum:0.9 decay:0.0001 nesterov:True\". The same rationale applies to the topology.
 
