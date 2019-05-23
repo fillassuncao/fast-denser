@@ -68,10 +68,21 @@ elif layer_type == 'sep-conv':
     layers.append(sep_conv)
 ```
 
-In addition, to enable the use of the above layers in evolution we would need to add a new production rule to the grammar: \"\<separable-conv\> ::= layer:sep-conv \[num-filters,int,1,32,2\56] \[kernel-size,int,1,2,5\] \[stride,int,1,1,3\] \<padding\>\ \[dilation-rate,int,1,1,3\] \<activation-function\> \<bias\>"
+In addition, to enable the use of the above layers in evolution we would need to add a new production rule to the grammar: \"\<separable-conv\> ::= layer:sep-conv \[num-filters,int,1,32,256] \[kernel-size,int,1,2,5\] \[stride,int,1,1,3\] \<padding\> \[dilation-rate,int,1,1,3\] \<activation-function\> \<bias\>"
 
 
 ### How to add new fitness functions
+
+The addition of new fitness functions follows the rationale of the addition of new layers. We need to create the necessary code and add it to the fitness\_metrics.py file. Currently it supports the accuracy, and the mean squared error. For example, to add the root mean squared error we can add the following code:
+```python
+def rmse(y_true, y_pred):
+  from math import sqrt
+
+  return sqrt(mse(y_true, y_pred))
+```
+
+After adding the rmse function we can use the rmse in the config.json file.
+
 
 ### Support
 
