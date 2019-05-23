@@ -25,7 +25,7 @@ Currently this codebase only works with python 2. The following libraries are ne
 
 ### Usage
 
-`python f_denser.py f_denser.py -d <dataset> -c <config> -r <run> -g <grammar>`
+`python f_denser.py -d <dataset> -c <config> -r <run> -g <grammar>`
 
 -d [mandatory] can assume one of the following values: mnist, fashion-mnist, svhn, cifar10, cifar100-fine, cifar100-coarse, tiny-imagenet
 
