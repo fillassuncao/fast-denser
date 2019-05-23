@@ -1,46 +1,41 @@
 import random
-from sklearn.cross_validation import train_test_split
 import keras
-from data_augmentation import augmentation
 from keras import backend
-from keras.legacy import interfaces
-from keras.preprocessing.image import ImageDataGenerator
 from multiprocessing import Pool
 from time import time
 import tensorflow
 import numpy as np
 from keras.callbacks import Callback, ModelCheckpoint
-from sklearn.metrics import accuracy_score
 import os
+from datasets import load_dataset
 
 DEBUG = False
-INIT_MAX = {'features':[2,3,4], 'classification':[1]}
 
 class TimedStopping(keras.callbacks.Callback):
     """
-    Stop training when maximum time has passed.
-    Code from:
-        https://github.com/keras-team/keras-contrib/issues/87
+        Stop training when maximum time has passed.
+        Code from:
+            https://github.com/keras-team/keras-contrib/issues/87
 
-    Attributes
-    ----------
-    start_time : float
-        time when the training started
-    
-    seconds : float 
-        maximum time before stopping.
-    
-    verbose : bool 
-        verbosity mode.
+        Attributes
+        ----------
+        start_time : float
+            time when the training started
+        
+        seconds : float 
+            maximum time before stopping.
+        
+        verbose : bool 
+            verbosity mode.
 
 
-    Methods
-    -------
-    on_train_begin(logs)
-        method called upon training beginning
+        Methods
+        -------
+        on_train_begin(logs)
+            method called upon training beginning
 
-    on_epoch_end(epoch, logs={})
-        method called after the end of each training epoch
+        on_epoch_end(epoch, logs={})
+            method called after the end of each training epoch
     """
 
     def __init__(self, seconds=None, verbose=0):
@@ -63,28 +58,28 @@ class TimedStopping(keras.callbacks.Callback):
 
     def on_train_begin(self, logs={}):
         """
-        Method called upon training beginning
+            Method called upon training beginning
 
-        Parameters
-        ----------
-        logs : dict
-            training logs
+            Parameters
+            ----------
+            logs : dict
+                training logs
         """
 
         self.start_time = time()
 
     def on_epoch_end(self, epoch, logs={}):
         """
-        Method called after the end of each training epoch.
-        Checks if the maximum time has passed
+            Method called after the end of each training epoch.
+            Checks if the maximum time has passed
 
-        Parameters
-        ----------
-        epoch : int
-            current epoch
+            Parameters
+            ----------
+            epoch : int
+                current epoch
 
-        logs : dict
-            training logs
+            logs : dict
+                training logs
         """
 
         if time() - self.start_time > self.seconds:
@@ -95,107 +90,72 @@ class TimedStopping(keras.callbacks.Callback):
 
 class Evaluator:
     """
-    Stores the dataset, maps the phenotype into a trainable model, and
-    evaluates it
+        Stores the dataset, maps the phenotype into a trainable model, and
+        evaluates it
 
 
-    Attributes
-    ----------
-    dataset : dict
-        dataset instances and partitions
+        Attributes
+        ----------
+        dataset : dict
+            dataset instances and partitions
+
+        fitness_metric : function
+            fitness_metric (y_true, y_pred)
+            y_pred are the confidences
 
 
-    Methods
-    -------
-    get_layers(phenotype)
-        parses the phenotype corresponding to the layers
-        auxiliary function of the assemble_network function
+        Methods
+        -------
+        get_layers(phenotype)
+            parses the phenotype corresponding to the layers
+            auxiliary function of the assemble_network function
 
-    get_learning(learning)
-        parses the phenotype corresponding to the learning
-        auxiliary function of the assemble_optimiser function
+        get_learning(learning)
+            parses the phenotype corresponding to the learning
+            auxiliary function of the assemble_optimiser function
 
-    assemble_network(keras_layers, input_size)
-        maps the layers phenotype into a keras model
+        assemble_network(keras_layers, input_size)
+            maps the layers phenotype into a keras model
 
-    assemble_optimiser(learning)
-        maps the learning into a keras optimiser
+        assemble_optimiser(learning)
+            maps the learning into a keras optimiser
 
-    evaluate(phenotype, load_prev_weights, weights_save_path, parent_weights_path,
-             train_time, num_epochs, input_size=(32, 32, 3))
-        evaluates the keras model using the keras optimiser
+        evaluate(phenotype, load_prev_weights, weights_save_path, parent_weights_path,
+                 train_time, num_epochs, datagen=None, input_size=(32, 32, 3))
+            evaluates the keras model using the keras optimiser
+
+        testing_performance(self, model_path)
+            compute testing performance of the model
     """
 
-    def __init__(self):
+    def __init__(self, dataset, fitness_metric):
         """
-        Creates the Evaluator instance and loads the dataset.
+            Creates the Evaluator instance and loads the dataset.
 
-        Parameters
-        ----------
-        dataset : str
-            dataset to be loaded
+            Parameters
+            ----------
+            dataset : str
+                dataset to be loaded
         """
 
-
-        self.dataset = self.load_cifar()
-
-    """Load CIFAR-10"""
-    def load_cifar(self, n_classes=10, validation_size=7500):
-        (x_train, y_train), (x_test, y_test) = keras.datasets.cifar10.load_data()
-
-        evo_x_train, x_val, evo_y_train, y_val = train_test_split(x_train, y_train,
-                                                                  test_size=validation_size,
-                                                                  stratify=y_train)
-
-        evo_x_val, evo_x_test, evo_y_val, evo_y_test = train_test_split(x_val, y_val,
-                                                                        test_size=5000,
-                                                                        stratify=y_val)
-
-        #input scaling
-        evo_x_train = evo_x_train.astype('float32')
-        evo_x_val = evo_x_val.astype('float32')
-        evo_x_test = evo_x_test.astype('float32')
-        x_test = x_test.astype('float32')
-        evo_x_train /= 255
-        evo_x_val /= 255
-        evo_x_test /= 255
-        x_test /= 255
-
-        #subraction of the mean image
-        x_mean = 0
-        for x in evo_x_train:
-            x_mean += x
-        x_mean /= len(x_train)
-        evo_x_train -= x_mean
-        evo_x_val -= x_mean
-        evo_x_test -= x_mean
-        x_test -= x_mean
-
-        evo_y_train = keras.utils.to_categorical(evo_y_train, n_classes)
-        evo_y_val = keras.utils.to_categorical(evo_y_val, n_classes)
-
-        dataset = {'evo_x_train': evo_x_train, 'evo_y_train': evo_y_train,
-                   'evo_x_val': evo_x_val, 'evo_y_val': evo_y_val,
-                   'evo_x_test': evo_x_test, 'evo_y_test': evo_y_test,
-                   'x_test': x_test, 'y_test': y_test}
-
-        return dataset
+        self.dataset = load_dataset(dataset)
+        self.fitness_metric = fitness_metric
 
 
     def get_layers(self, phenotype):
         """
-        Parses the phenotype corresponding to the layers.
-        Auxiliary function of the assemble_network function.
+            Parses the phenotype corresponding to the layers.
+            Auxiliary function of the assemble_network function.
 
-        Parameters
-        ----------
-        phenotye : str
-            individual layers phenotype
+            Parameters
+            ----------
+            phenotye : str
+                individual layers phenotype
 
-        Returns
-        -------
-        layers : list
-            list of tuples (layer_type : str, node properties : dict)
+            Returns
+            -------
+            layers : list
+                list of tuples (layer_type : str, node properties : dict)
         """
 
         raw_phenotype = phenotype.split(' ')
@@ -227,19 +187,18 @@ class Evaluator:
 
     def get_learning(self, learning):
         """
-        Parses the phenotype corresponding to the learning
-        Auxiliary function of the assemble_optimiser function
+            Parses the phenotype corresponding to the learning
+            Auxiliary function of the assemble_optimiser function
 
-        Parameters
-        ----------
-        learning : str
-            learning phenotype of the individual
+            Parameters
+            ----------
+            learning : str
+                learning phenotype of the individual
 
-        Returns
-        -------
-        learning_params : dict
-            learning parameters
-            
+            Returns
+            -------
+            learning_params : dict
+                learning parameters
         """
 
         raw_learning = learning.split(' ')
@@ -263,21 +222,20 @@ class Evaluator:
 
     def assemble_network(self, keras_layers, input_size):
         """
-        Maps the layers phenotype into a keras model
+            Maps the layers phenotype into a keras model
 
-        Parameters
-        ----------
-        keras_layers : list
-            output from get_layers
+            Parameters
+            ----------
+            keras_layers : list
+                output from get_layers
 
-        input_size : tuple
-            network input shape
+            input_size : tuple
+                network input shape
 
-        Returns
-        -------
-        model : keras.models.Model
-            keras trainable model
-
+            Returns
+            -------
+            model : keras.models.Model
+                keras trainable model
         """
 
         #input layer
@@ -410,17 +368,17 @@ class Evaluator:
 
     def assemble_optimiser(self, learning):
         """
-        Maps the learning into a keras optimiser
+            Maps the learning into a keras optimiser
 
-        Parameters
-        ----------
-        learning : dict
-            output of get_learning
+            Parameters
+            ----------
+            learning : dict
+                output of get_learning
 
-        Returns
-        -------
-        optimiser : keras.optimizers.Optimizer
-            keras optimiser that will be later used to train the model
+            Returns
+            -------
+            optimiser : keras.optimizers.Optimizer
+                keras optimiser that will be later used to train the model
         """
 
         if learning['learning'] == 'rmsprop':
@@ -442,41 +400,42 @@ class Evaluator:
 
 
     def evaluate(self, phenotype, load_prev_weights, weights_save_path, parent_weights_path,\
-                 train_time, num_epochs, input_size=(32, 32, 3)):
+                 train_time, num_epochs, datagen=None, datagen_test = None, input_size=(32, 32, 3)):
         """
-        Evaluates the keras model using the keras optimiser
+            Evaluates the keras model using the keras optimiser
 
-        Parameters
-        ----------
-        phenotype : str
-            individual phenotype
+            Parameters
+            ----------
+            phenotype : str
+                individual phenotype
 
-        load_prev_weights : bool
-            resume training from a previous train or not
+            load_prev_weights : bool
+                resume training from a previous train or not
 
-        weights_save_path : str
-            path where to save the model weights after training
+            weights_save_path : str
+                path where to save the model weights after training
 
-        parent_weights_path : str
-            path to the weights of the previous training
+            parent_weights_path : str
+                path to the weights of the previous training
 
-        train_time : float
-            maximum training time
+            train_time : float
+                maximum training time
 
-        num_epochs : int
-            maximum number of epochs
+            num_epochs : int
+                maximum number of epochs
 
-        input_size : tuple
-            dataset input shape
-            
+            datagen : keras.preprocessing.image.ImageDataGenerator
+                Data augmentation method image data generator
 
-        Returns
-        -------
-        score_history : dict
-            training data: loss and accuracy
+            input_size : tuple
+                dataset input shape
+                
 
+            Returns
+            -------
+            score_history : dict
+                training data: loss and accuracy
         """
-
 
         model_phenotype, learning_phenotype = phenotype.split('learning:')
         learning_phenotype = 'learning:'+learning_phenotype.rstrip().lstrip()
@@ -497,8 +456,6 @@ class Evaluator:
                           optimizer=opt,
                           metrics=['accuracy'])
 
-        datagen_train = ImageDataGenerator(preprocessing_function=augmentation) 
-
         #early stopping
         early_stop = keras.callbacks.EarlyStopping(monitor='val_loss', patience=int(keras_learning['early_stop']))
 
@@ -510,15 +467,27 @@ class Evaluator:
 
         trainable_count = int(np.sum([backend.count_params(p) for p in set(model.trainable_weights)]))
 
-        score = model.fit_generator(datagen_train.flow(self.dataset['evo_x_train'],
-                                                       self.dataset['evo_y_train'],
-                                                       batch_size=batch_size),
-                                    steps_per_epoch=(self.dataset['evo_x_train'].shape[0]//batch_size),
-                                    epochs=int(keras_learning['epochs']),
-                                    validation_data=(self.dataset['evo_x_val'], self.dataset['evo_y_val']),
-                                    callbacks = [early_stop, time_stop, monitor],
-                                    initial_epoch = num_epochs,
-                                    verbose=0)
+        if datagen is not None:
+            score = model.fit_generator(datagen.flow(self.dataset['evo_x_train'],
+                                                 self.dataset['evo_y_train'],
+                                                 batch_size=batch_size),
+                                        steps_per_epoch=(self.dataset['evo_x_train'].shape[0]//batch_size),
+                                        epochs=int(keras_learning['epochs']),
+                                        validation_data=(datagen_test.flow(self.dataset['evo_x_val'], self.dataset['evo_y_val'], batch_size=batch_size)),
+                                        validation_steps = (self.dataset['evo_x_val'].shape[0]//batch_size),
+                                        callbacks = [early_stop, time_stop, monitor],
+                                        initial_epoch = num_epochs,
+                                        verbose= DEBUG)
+        else:
+            score = model.fit(x = self.dataset['evo_x_train'], y = self.dataset['evo_y_train'],
+                              batch_size = batch_size,
+                              epochs = int(keras_learning['epochs']),
+                              steps_per_epoch=(self.dataset['evo_x_train'].shape[0]//batch_size),
+                              validation_data=(self.dataset['evo_x_val'], self.dataset['evo_y_val']),
+                              callbacks = [early_stop, time_stop, monitor],
+                              initial_epoch = num_epochs,
+                              verbose = DEBUG)
+
 
         #load weights with the lowest val loss
         if os.path.isfile(weights_save_path):
@@ -527,9 +496,12 @@ class Evaluator:
         model.save(weights_save_path.replace('.hdf5', '.h5'))
 
         #measure test performance
-        y_pred_test = model.predict(self.dataset['evo_x_test'], batch_size=batch_size, verbose=0)
-        y_pred_test = np.argmax(y_pred_test, axis=1)
-        accuracy_test = accuracy_score(y_pred_test, self.dataset['evo_y_test'])
+        if datagen_test is None:
+            y_pred_test = model.predict(self.dataset['evo_x_test'], batch_size=batch_size, verbose=0)
+        else:
+            y_pred_test = model.predict_generator(datagen_test.flow(self.dataset['evo_x_test'], batch_size=100, shuffle=False), steps =self.dataset['evo_x_test'].shape[0]//100, verbose=DEBUG)
+
+        accuracy_test = self.fitness_metric(self.dataset['evo_y_test'], y_pred_test)
 
         if DEBUG:
             print phenotype, accuracy_test
@@ -540,118 +512,147 @@ class Evaluator:
         return score.history
 
 
+    def testing_performance(self, model_path):
+        """
+            Compute testing performance of the model
+
+            Parameters
+            ----------
+            model_path : str
+                Path to the model .h5 file
+
+
+            Returns
+            -------
+            accuracy : float
+                Model accuracy
+        """
+
+        model = keras.models.load_model(model_path)
+        y_pred = model.predict(self.dataset['x_test'])
+        accuracy = self.fitness_metric(self.dataset['y_test'], y_pred)
+        return accuracy
+
+
+
 def evaluate(args):
     """
-    Function used to deploy a new process to train a candidate solution.
-    Each candidate solution is trained in a separe process to avoid memory problems.
+        Function used to deploy a new process to train a candidate solution.
+        Each candidate solution is trained in a separe process to avoid memory problems.
 
-    Parameters
-    ----------
-    args : tuple
-        cnn_eval : Evaluator
-            network evaluator
+        Parameters
+        ----------
+        args : tuple
+            cnn_eval : Evaluator
+                network evaluator
 
-        phenotype : str
-            individual phenotype
+            phenotype : str
+                individual phenotype
 
-        load_prev_weights : bool
-            resume training from a previous train or not
+            load_prev_weights : bool
+                resume training from a previous train or not
 
-        weights_save_path : str
-            path where to save the model weights after training
+            weights_save_path : str
+                path where to save the model weights after training
 
-        parent_weights_path : str
-            path to the weights of the previous training
+            parent_weights_path : str
+                path to the weights of the previous training
 
-        train_time : float
-            maximum training time
+            train_time : float
+                maximum training time
 
-        num_epochs : int
-            maximum number of epochs
+            num_epochs : int
+                maximum number of epochs
 
-    Returns
-    -------
-    score_history : dict
-        training data: loss and accuracy
+        Returns
+        -------
+        score_history : dict
+            training data: loss and accuracy
     """
 
-    cnn_eval, phenotype, load_prev_weights, weights_save_path, parent_weights_path, train_time, num_epochs = args
+    cnn_eval, phenotype, load_prev_weights, weights_save_path, parent_weights_path, train_time, num_epochs, datagen, datagen_test = args
 
     try:
-        return cnn_eval.evaluate(phenotype, load_prev_weights, weights_save_path, parent_weights_path, train_time, num_epochs)
+        return cnn_eval.evaluate(phenotype, load_prev_weights, weights_save_path, parent_weights_path, train_time, num_epochs, datagen, datagen_test)
     except tensorflow.errors.ResourceExhaustedError as e:
         return None
 
 
 class Module:
     """
-    Each of the units of the outer-level genotype
+        Each of the units of the outer-level genotype
 
 
-    Attributes
-    ----------
-    module : str
-        non-terminal symbol
-
-    max_expansions : int
-        maximum expansions of the block
-
-    levels_back : dict
-        number of previous layers a given layer can receive as input
-
-    layers : list
-        list of layers of the module
-
-    connections : dict
-        list of connetions of each layer
-
-
-    Methods
-    -------
-        initialise(grammar, reuse)
-            Randomly creates a module
-
-    """
-
-    def __init__(self, module, max_expansions, levels_back):
-        """
-        Parameters
+        Attributes
         ----------
         module : str
             non-terminal symbol
+
+        min_expansions : int
+            minimum expansions of the block
 
         max_expansions : int
             maximum expansions of the block
 
         levels_back : dict
             number of previous layers a given layer can receive as input
+
+        layers : list
+            list of layers of the module
+
+        connections : dict
+            list of connetions of each layer
+
+
+        Methods
+        -------
+            initialise(grammar, reuse)
+                Randomly creates a module
+    """
+
+    def __init__(self, module, min_expansions, max_expansions, levels_back, min_expansins):
+        """
+            Parameters
+            ----------
+            module : str
+                non-terminal symbol
+
+            min_expansions : int
+                minimum expansions of the block
+        
+            max_expansions : int
+                maximum expansions of the block
+
+            levels_back : dict
+                number of previous layers a given layer can receive as input
         """
 
         self.module = module
+        self.min_expansions = min_expansins
         self.max_expansions = max_expansions
         self.levels_back = levels_back
         self.layers = []
         self.connections = {}
 
-    def initialise(self, grammar, reuse):
+    def initialise(self, grammar, reuse, init_max):
         """
-        Randomly creates a module
+            Randomly creates a module
 
-        Parameters
-        ----------
-        grammar : Grammar
-            grammar instace that stores the expansion rules
+            Parameters
+            ----------
+            grammar : Grammar
+                grammar instace that stores the expansion rules
 
-        reuse : float
-            likelihood of reusing an existing layer
+            reuse : float
+                likelihood of reusing an existing layer
 
-        Returns
-        -------
-        score_history : dict
-            training data: loss and accuracy
+            Returns
+            -------
+            score_history : dict
+                training data: loss and accuracy
         """
 
-        num_expansions = random.choice(INIT_MAX[self.module])
+        num_expansions = random.choice(init_max[self.module])
 
         #Initialise layers
         for idx in range(num_expansions):
@@ -682,88 +683,87 @@ class Module:
 
 class Individual:
     """
-    Candidate solution.
+        Candidate solution.
 
 
-    Attributes
-    ----------
-    network_structure : list
-        ordered list of tuples formated as follows 
-        [(non-terminal, min_expansions, max_expansions), ...]
-
-    output_rule : str
-        output non-terminal symbol
-
-    macro_rules : list
-        list of non-terminals (str) with the marco rules (e.g., learning)
-
-    modules : list
-        list of Modules (genotype) of the layers
-
-    output : dict
-        output rule genotype
-
-    macro : list
-        list of Modules (genotype) for the macro rules
-
-    phenotype : str
-        phenotype of the candidate solution
-
-    fitness : float
-        fitness value of the candidate solution
-
-    metrics : dict
-        training metrics
-
-    num_epochs : int
-        number of performed epochs during training
-
-    trainable_parameters : int
-        number of trainable parameters of the network
-
-    time : float
-        network training time
-
-    current_time : float
-        performed network training time
-
-    train_time : float
-        maximum training time
-
-    id : int
-        individual unique identifier
-
-
-    Methods
-    -------
-        initialise(grammar, levels_back, reuse)
-            Randomly creates a candidate solution
-
-        decode(grammar)
-            Maps the genotype to the phenotype
-
-        evaluate(grammar, cnn_eval, weights_save_path, parent_weights_path='')
-            Performs the evaluation of a candidate solution
-
-    """
-
-
-    def __init__(self, network_structure, macro_rules, output_rule, ind_id):
-        """
-        Parameters
+        Attributes
         ----------
         network_structure : list
             ordered list of tuples formated as follows 
             [(non-terminal, min_expansions, max_expansions), ...]
 
-        macro_rules : list
-            list of non-terminals (str) with the marco rules (e.g., learning)
-
         output_rule : str
             output non-terminal symbol
 
-        ind_id : int
+        macro_rules : list
+            list of non-terminals (str) with the marco rules (e.g., learning)
+
+        modules : list
+            list of Modules (genotype) of the layers
+
+        output : dict
+            output rule genotype
+
+        macro : list
+            list of Modules (genotype) for the macro rules
+
+        phenotype : str
+            phenotype of the candidate solution
+
+        fitness : float
+            fitness value of the candidate solution
+
+        metrics : dict
+            training metrics
+
+        num_epochs : int
+            number of performed epochs during training
+
+        trainable_parameters : int
+            number of trainable parameters of the network
+
+        time : float
+            network training time
+
+        current_time : float
+            performed network training time
+
+        train_time : float
+            maximum training time
+
+        id : int
             individual unique identifier
+
+
+        Methods
+        -------
+            initialise(grammar, levels_back, reuse)
+                Randomly creates a candidate solution
+
+            decode(grammar)
+                Maps the genotype to the phenotype
+
+            evaluate(grammar, cnn_eval, weights_save_path, parent_weights_path='')
+                Performs the evaluation of a candidate solution
+    """
+
+
+    def __init__(self, network_structure, macro_rules, output_rule, ind_id):
+        """
+            Parameters
+            ----------
+            network_structure : list
+                ordered list of tuples formated as follows 
+                [(non-terminal, min_expansions, max_expansions), ...]
+
+            macro_rules : list
+                list of non-terminals (str) with the marco rules (e.g., learning)
+
+            output_rule : str
+                output non-terminal symbol
+
+            ind_id : int
+                individual unique identifier
         """
 
 
@@ -783,31 +783,30 @@ class Individual:
         self.train_time = 0
         self.id = ind_id
 
-    def initialise(self, grammar, levels_back, reuse):
+    def initialise(self, grammar, levels_back, reuse, init_max):
         """
-        Randomly creates a candidate solution
+            Randomly creates a candidate solution
 
-        Parameters
-        ----------
-        grammar : Grammar
-            grammar instaces that stores the expansion rules
+            Parameters
+            ----------
+            grammar : Grammar
+                grammar instaces that stores the expansion rules
 
-        levels_back : dict
-            number of previous layers a given layer can receive as input
+            levels_back : dict
+                number of previous layers a given layer can receive as input
 
-        reuse : float
-            likelihood of reusing an existing layer
+            reuse : float
+                likelihood of reusing an existing layer
 
-        Returns
-        -------
-        candidate_solution : Individual
-            randomly created candidate solution
-
+            Returns
+            -------
+            candidate_solution : Individual
+                randomly created candidate solution
         """
 
-        for non_terminal, max_expansions in self.network_structure:
-            new_module = Module(non_terminal, max_expansions, levels_back[non_terminal])
-            new_module.initialise(grammar, reuse)
+        for non_terminal, min_expansions, max_expansions in self.network_structure:
+            new_module = Module(non_terminal, min_expansions, max_expansions, levels_back[non_terminal], min_expansions)
+            new_module.initialise(grammar, reuse, init_max)
 
             self.modules.append(new_module)
 
@@ -823,17 +822,17 @@ class Individual:
 
     def decode(self, grammar):
         """
-        Maps the genotype to the phenotype
+            Maps the genotype to the phenotype
 
-        Parameters
-        ----------
-        grammar : Grammar
-            grammar instaces that stores the expansion rules
+            Parameters
+            ----------
+            grammar : Grammar
+                grammar instaces that stores the expansion rules
 
-        Returns
-        -------
-        phenotype : str
-            phenotype of the individual to be used in the mapping to the keras model.
+            Returns
+            -------
+            phenotype : str
+                phenotype of the individual to be used in the mapping to the keras model.
         """
 
         phenotype = ''
@@ -854,30 +853,32 @@ class Individual:
         return self.phenotype
 
 
-    def evaluate(self, grammar, cnn_eval, weights_save_path, parent_weights_path=''):
+    def evaluate(self, grammar, cnn_eval, datagen, datagen_test, weights_save_path, parent_weights_path=''):
         """
-        Performs the evaluation of a candidate solution
+            Performs the evaluation of a candidate solution
 
-        Parameters
-        ----------
-        grammar : Grammar
-            grammar instaces that stores the expansion rules
+            Parameters
+            ----------
+            grammar : Grammar
+                grammar instaces that stores the expansion rules
 
-        cnn_eval : Evaluator
-            Evaluator instance used to train the networks
-    
-        weights_save_path : str
-            path where to save the model weights after training
+            cnn_eval : Evaluator
+                Evaluator instance used to train the networks
 
-        parent_weights_path : str
-            path to the weights of the previous training
-
-
-        Returns
-        -------
-        fitness : float
-            quality of the candidate solution
+            datagen : keras.preprocessing.image.ImageDataGenerator
+                Data augmentation method image data generator
         
+            weights_save_path : str
+                path where to save the model weights after training
+
+            parent_weights_path : str
+                path to the weights of the previous training
+
+
+            Returns
+            -------
+            fitness : float
+                quality of the candidate solutions
         """
 
         phenotype = self.decode(grammar)
@@ -890,7 +891,9 @@ class Individual:
 
         train_time = self.train_time - self.current_time
 
-        result = pool.apply_async(evaluate, [(cnn_eval, phenotype, load_prev_weights, weights_save_path, parent_weights_path, train_time, self.num_epochs)])
+        result = pool.apply_async(evaluate, [(cnn_eval, phenotype, load_prev_weights,\
+                                              weights_save_path, parent_weights_path,\
+                                              train_time, self.num_epochs, datagen, datagen_test)])
         pool.close()
         pool.join()
         metrics = result.get()

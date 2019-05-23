@@ -10,84 +10,11 @@ import os
 from shutil import copyfile
 from glob import glob
 import json
+from keras.preprocessing.image import ImageDataGenerator
+from fitness_metrics import * 
+from jsmin import jsmin
+from data_augmentation import augmentation
 
-class Config:
-    """
-    Class used for storing the configuration parameters.
-    TODO: will be changed to a config file.
-
-    Attributes
-    ----------
-    random_seeds : list
-        seeds used by random
-    numpy_seeds : list
-        seeds used by numpy
-    num_generations : int
-        maximum number of generations of the (1+lambda)-ES
-    _lambda : int
-        number of individuals to generate in each generation
-    
-    add_layer : float
-        probability of adding a new layer
-    reuse_layer : float
-        probability of reusing an existing layer, instead of randomly 
-        generating a new one 
-    remove_layer : float
-        probability of removing a layer
-    add_connection : float
-        probability of adding a connection
-    remove_connection : float
-        probability of removing a connection
-    dsge_layer : float
-        probability of chaning a parameter of one of the layers
-    macro_layer : float
-        probability of mutating a macro layer
-
-    grammar_path : str
-        path to the grammar
-    network_structure : list
-        structure of the network
-    network_structure_init : dict
-        maximum number of layers when initialising
-    levels_back : dict
-        upper bound on the layers a given layer can receive as input
-    max_epochs : int
-        maximum number of epochs of the overall of the networks (can be
-        used as a stop criteria of evolution)
-    train_time : int
-        maximum train time (in seconds) for each network
-    macro_structure : list
-        macro structure of the network
-    output : str
-        output layer of the network
-    save_path : str
-        path used to save the data generated during evolution
-    """
-
-    def __init__(self):
-        self.random_seeds = [100, 200, 300, 400, 500, 600, 700, 800, 900, 1000, 1100, 1200, 1300, 1400]
-        self.numpy_seeds = [100, 200, 300, 400, 500, 600, 700, 800, 900, 1000, 1100, 1200, 1300, 1400]
-        self.num_generations = 150
-        self._lambda = 4
-        
-        self.add_layer = 0.25
-        self.reuse_layer = 0.15
-        self.remove_layer = 0.25
-        self.add_connection = 0
-        self.remove_connection = 0
-        self.dsge_layer = 0.15
-        self.macro_layer = 0.3
-        self.train_longer = 0.2
-
-        self.grammar_path = 'modules.grammar'
-        self.network_structure = [('features', 30), ('classification', 10)]
-        self.network_structure_init = {'features':[2,3,4], 'classification':[1]}
-        self.levels_back = {'features': 1, 'classification': 1}
-        self.max_epochs = 1000000
-        self.default_train_time = 10*60
-        self.macro_structure = ['learning']
-        self.output = 'softmax'
-        self.save_path = './experiments/'
 
 
 def save_pop(population, save_path, run, gen):
@@ -137,6 +64,7 @@ def save_pop(population, save_path, run, gen):
         f_json.write(json.dumps(json_dump, indent=4))
 
 
+
 def pickle_evaluator(evaluator, save_path, run):
     """
         Save the Evaluator instance to later enable resuming evolution
@@ -156,6 +84,7 @@ def pickle_evaluator(evaluator, save_path, run):
 
     with open('%s/run_%d/evaluator.pkl' % (save_path, run), 'wb') as handle:
         pickle.dump(evaluator, handle, protocol=pickle.HIGHEST_PROTOCOL)
+
 
 
 def pickle_population(population, parent, save_path, run):
@@ -194,6 +123,7 @@ def pickle_population(population, parent, save_path, run):
 
     with open('%s/run_%d/numpy.pkl' % (save_path, run), 'wb') as handle_numpy:
         pickle.dump(np.random.get_state(), handle_numpy, protocol=pickle.HIGHEST_PROTOCOL)
+
 
 
 def get_total_epochs(save_path, run, last_gen):
@@ -303,7 +233,7 @@ def unpickle_population(save_path, run):
 
 
 
-def select_fittest(population, population_fits, grammar, cnn_eval, gen, save_path, default_train_time):
+def select_fittest(population, population_fits, grammar, cnn_eval, datagen, datagen_test, gen, save_path, default_train_time):
     """
         Select the parent to seed the next generation.
 
@@ -322,6 +252,12 @@ def select_fittest(population, population_fits, grammar, cnn_eval, gen, save_pat
 
         cnn_eval : Evaluator
             Evaluator instance used to train the networks
+
+        datagen : keras.preprocessing.image.ImageDataGenerator
+            Data augmentation method image data generator for the training data
+
+        datagen_test : keras.preprocessing.image.ImageDataGenerator
+            Data augmentation method image data generator for the validation and test data
 
         gen : int
             current generation of the ES
@@ -352,7 +288,7 @@ def select_fittest(population, population_fits, grammar, cnn_eval, gen, save_pat
             retrain_elite = True
             elite = population[0]
             elite.train_time = parent.train_time
-            elite.evaluate(grammar, cnn_eval, '%s/best_%d_%d.hdf5' % (save_path, gen, elite.id), '%s/best_%d_%d.hdf5' % (save_path, gen, elite.id))
+            elite.evaluate(grammar, cnn_eval, datagen, datagen_test, '%s/best_%d_%d.hdf5' % (save_path, gen, elite.id), '%s/best_%d_%d.hdf5' % (save_path, gen, elite.id))
             population_fits[0] = elite.fitness
 
         min_train_time = min([ind.current_time for ind in population])
@@ -371,7 +307,7 @@ def select_fittest(population, population_fits, grammar, cnn_eval, gen, save_pat
 
                 parent_10min.train_time = parent.train_time
 
-                parent_10min.evaluate(grammar, cnn_eval, '%s/best_%d_%d.hdf5' % (save_path, gen, parent_10min.id), '%s/best_%d_%d.hdf5' % (save_path, gen, parent_10min.id))
+                parent_10min.evaluate(grammar, cnn_eval, datagen, datagen_test, '%s/best_%d_%d.hdf5' % (save_path, gen, parent_10min.id), '%s/best_%d_%d.hdf5' % (save_path, gen, parent_10min.id))
 
                 population_fits[population.index(parent_10min)] = parent_10min.fitness
 
@@ -399,6 +335,7 @@ def select_fittest(population, population_fits, grammar, cnn_eval, gen, save_pat
             return deepcopy(parent)
 
     return deepcopy(parent)
+
 
 
 def mutation_dsge(layer, grammar):
@@ -451,6 +388,7 @@ def mutation_dsge(layer, grammar):
 
         else:
             return NotImplementedError
+
 
 
 def mutation(individual, grammar, add_layer, re_use_layer, remove_layer, add_connection,\
@@ -558,7 +496,7 @@ def mutation(individual, grammar, add_layer, re_use_layer, remove_layer, add_con
 
         #remove-layer
         for _ in range(random.randint(1,2)):
-            if len(module.layers) > 1 and random.random() <= remove_layer:
+            if len(module.layers) > module.min_expansions and random.random() <= remove_layer:
                 remove_idx = random.randint(0, len(module.layers)-1)
                 del module.layers[remove_idx]
                 
@@ -607,7 +545,37 @@ def mutation(individual, grammar, add_layer, re_use_layer, remove_layer, add_con
     return ind
 
 
-def main(run):
+
+def load_config(config_file):
+    """
+        Load configuration json file.
+
+
+        Parameters
+        ----------
+        config_file : str
+            path to the configuration file
+            
+        Returns
+        -------
+        config : dict
+            configuration json file
+    """
+
+    with open(config_file) as js_file:
+        minified = jsmin(js_file.read())
+
+    config = json.loads(minified)
+
+    config["TRAINING"]["datagen"] = eval(config["TRAINING"]["datagen"])
+    config["TRAINING"]["datagen_test"] = eval(config["TRAINING"]["datagen_test"])
+    config["TRAINING"]["fitness_metric"] = eval(config["TRAINING"]["fitness_metric"])
+
+    return config
+
+
+
+def main(run, dataset, config_file, grammar_path):
     """
         (1+lambda)-ES
 
@@ -617,34 +585,42 @@ def main(run):
         run : int
             evolutionary run to perform
 
+        dataset : str
+            dataset to be solved
+
+        config_file : str
+            path to the configuration file
+
+        grammar_path : str
+            path to the grammar file
     """
 
     #load config file
-    config = Config()
+    config = load_config(config_file)
 
     #load grammar
-    grammar = Grammar(config.grammar_path)
+    grammar = Grammar(grammar_path)
 
     #best fitness so far
     best_fitness = None
 
     #load previous population content (if any)
-    unpickle = unpickle_population(config.save_path, run)
+    unpickle = unpickle_population(config["EVOLUTIONARY"]["save_path"], run)
 
     #if there is not a previous population
     if unpickle is None:
         #create directories
-        makedirs('%s/run_%d/' % (config.save_path, run))
+        makedirs('%s/run_%d/' % (config["EVOLUTIONARY"]["save_path"], run))
 
         #set random seeds
-        random.seed(config.random_seeds[run])
-        np.random.seed(config.numpy_seeds[run])
+        random.seed(config["EVOLUTIONARY"]["random_seeds"][run])
+        np.random.seed(config["EVOLUTIONARY"]["numpy_seeds"][run])
 
         #create evaluator
-        cnn_eval = Evaluator()
+        cnn_eval = Evaluator(dataset, config["TRAINING"]["fitness_metric"])
 
         #save evaluator
-        pickle_evaluator(cnn_eval, config.save_path, run)
+        pickle_evaluator(cnn_eval, config["EVOLUTIONARY"]["save_path"], run)
 
         #status variables
         last_gen = -1
@@ -657,10 +633,10 @@ def main(run):
         np.random.set_state(pkl_numpy)
 
 
-    for gen in range(last_gen+1, config.num_generations):
+    for gen in range(last_gen+1, config["EVOLUTIONARY"]["num_generations"]):
 
         #check the total number of epochs (stop criteria)
-        if total_epochs is not None and total_epochs >= config.max_epochs:
+        if total_epochs is not None and total_epochs >= config["EVOLUTIONARY"]["max_epochs"]:
             break
 
         if gen == 0:
@@ -668,29 +644,30 @@ def main(run):
             print('[%d] Performing generation: %d' % (run, gen))
             
             #create initial population
-            population = [Individual(config.network_structure, config.macro_structure,\
-                          config.output, _id_).initialise(grammar, config.levels_back,\
-                          config.reuse_layer) for _id_ in range(config._lambda)]
+            population = [Individual(config["NETWORK"]["network_structure"], config["NETWORK"]["macro_structure"],\
+                          config["NETWORK"]["output"], _id_).initialise(grammar, config["NETWORK"]["levels_back"],\
+                          config["EVOLUTIONARY"]["MUTATIONS"]["reuse_layer"], config["NETWORK"]["network_structure_init"]) \
+                          for _id_ in range(config["EVOLUTIONARY"]["lambda"])]
 
             #set initial population variables and evaluate population
             population_fits = []
             for idx, ind in enumerate(population):
                 ind.current_time = 0
                 ind.num_epochs = 0
-                ind.train_time = config.default_train_time
-                population_fits.append(ind.evaluate(grammar, cnn_eval, '%s/run_%d/best_%d_%d.hdf5' % (config.save_path, run, gen, idx)))
+                ind.train_time = config["TRAINING"]["default_train_time"]
+                population_fits.append(ind.evaluate(grammar, cnn_eval, config["TRAINING"]["datagen"], config["TRAINING"]["datagen_test"], '%s/run_%d/best_%d_%d.hdf5' % (config["EVOLUTIONARY"]["save_path"], run, gen, idx)))
                 ind.id = idx
         
         else:
             print('[%d] Performing generation: %d' % (run, gen))
             
             #generate offspring (by mutation)
-            offspring = [mutation(parent, grammar, config.add_layer,
-                                  config.reuse_layer, config.remove_layer, 
-                                  config.add_connection, config.remove_connection,
-                                  config.dsge_layer, config.macro_layer,
-                                  config.train_longer, config.default_train_time) \
-                         for _ in range(config._lambda)]
+            offspring = [mutation(parent, grammar, config["EVOLUTIONARY"]["MUTATIONS"]["add_layer"],
+                                  config["EVOLUTIONARY"]["MUTATIONS"]["reuse_layer"], config["EVOLUTIONARY"]["MUTATIONS"]["remove_layer"], 
+                                  config["EVOLUTIONARY"]["MUTATIONS"]["add_connection"], config["EVOLUTIONARY"]["MUTATIONS"]["remove_connection"],
+                                  config["EVOLUTIONARY"]["MUTATIONS"]["dsge_layer"], config["EVOLUTIONARY"]["MUTATIONS"]["macro_layer"],
+                                  config["EVOLUTIONARY"]["MUTATIONS"]["train_longer"], config["TRAINING"]["default_train_time"]) 
+                                  for _ in range(config["EVOLUTIONARY"]["lambda"])]
 
             population = [parent] + offspring
 
@@ -702,42 +679,123 @@ def main(run):
             #evaluate population
             population_fits = []
             for idx, ind in enumerate(population):
-                population_fits.append(ind.evaluate(grammar, cnn_eval, '%s/run_%d/best_%d_%d.hdf5' % (config.save_path, run, gen, idx), '%s/run_%d/best_%d_%d.hdf5' % (config.save_path, run, gen-1, parent_id)))
+                population_fits.append(ind.evaluate(grammar, cnn_eval, config["TRAINING"]["datagen"], config["TRAINING"]["datagen_test"], '%s/run_%d/best_%d_%d.hdf5' % (config["EVOLUTIONARY"]["save_path"], run, gen, idx), '%s/run_%d/best_%d_%d.hdf5' % (config["EVOLUTIONARY"]["save_path"], run, gen-1, parent_id)))
                 ind.id = idx
 
         #select parent
         parent = select_fittest(population, population_fits, grammar, cnn_eval,\
-                                gen, config.save_path+'/run_'+str(run),\
-                                config.default_train_time)
+                                config["TRAINING"]["datagen"], config["TRAINING"]["datagen_test"], gen, \
+                                config["EVOLUTIONARY"]["save_path"]+'/run_'+str(run),\
+                                config["TRAINING"]["default_train_time"])
 
         #remove temporary files to free disk space
         if gen > 1:
             for x in range(len(population)):
-                if os.path.isfile('%s/run_%d/best_%d_%d.hdf5' % (config.save_path, run, gen-2, x)):
-                    os.remove('%s/run_%d/best_%d_%d.hdf5' % (config.save_path, run, gen-2, x))
-                    os.remove('%s/run_%d/best_%d_%d.h5' % (config.save_path, run, gen-2, x))
+                if os.path.isfile('%s/run_%d/best_%d_%d.hdf5' % (config["EVOLUTIONARY"]["save_path"], run, gen-2, x)):
+                    os.remove('%s/run_%d/best_%d_%d.hdf5' % (config["EVOLUTIONARY"]["save_path"], run, gen-2, x))
+                    os.remove('%s/run_%d/best_%d_%d.h5' % (config["EVOLUTIONARY"]["save_path"], run, gen-2, x))
 
         #update best individual
         if best_fitness is None or parent.fitness > best_fitness:
             best_fitness = parent.fitness
-            copyfile('%s/run_%d/best_%d_%d.hdf5' % (config.save_path, run,gen, parent.id), '%s/run_%d/best.hdf5' % (config.save_path, run))
-            copyfile('%s/run_%d/best_%d_%d.h5' % (config.save_path, run,gen, parent.id), '%s/run_%d/best.h5' % (config.save_path, run))
+            copyfile('%s/run_%d/best_%d_%d.hdf5' % (config["EVOLUTIONARY"]["save_path"], run,gen, parent.id), '%s/run_%d/best.hdf5' % (config["EVOLUTIONARY"]["save_path"], run))
+            copyfile('%s/run_%d/best_%d_%d.h5' % (config["EVOLUTIONARY"]["save_path"], run,gen, parent.id), '%s/run_%d/best.h5' % (config["EVOLUTIONARY"]["save_path"], run))
+            with open('%s/run_%d/best_parent.pkl' % (config["EVOLUTIONARY"]["save_path"], run), 'wb') as handle:
+                pickle.dump(parent, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
         print('[%d] Best fitness of generation %d: %f' % (run, gen, max(population_fits)))
         print('[%d] Best overall fitness: %f' % (run, best_fitness))
 
         #save population
-        save_pop(population, config.save_path, run, gen)
-        pickle_population(population, parent, config.save_path, run)
+        save_pop(population, config["EVOLUTIONARY"]["save_path"], run, gen)
+        pickle_population(population, parent, config["EVOLUTIONARY"]["save_path"], run)
 
         total_epochs += sum([ind.num_epochs for ind in population])
 
 
-if __name__ == '__main__':
-    if len(argv) != 2:
-        print('python f_denser.py <run>')
+    #compute testing performance of the fittest network
+    best_test_acc = cnn_eval.testing_performance('%s/run_%d/best.h5' % (config["EVOLUTIONARY"]["save_path"], run))
+    print('[%d] Best test accuracy: %f' % (run, best_test_acc))
+
+
+
+def process_input(argv):
+    """
+        Maps and checks the input parameters and call the main function.
+
+        Parameters
+        ----------
+        argv : list
+            argv from system
+    """
+
+    dataset = None
+    config_file = None
+    run = 0
+    grammar = None
+
+    try:
+        opts, args = getopt.getopt(argv, "hd:c:r:g:",["dataset=","config=","run=","grammar="]   )
+    except getopt.GetoptError:
+        print 'f_denser.py -d <dataset> -c <config> -r <run> -g <grammra>'
+        sys.exit(2)
+
+
+    for opt, arg in opts:
+        if opt == '-h':
+            print 'f_denser.py -d <dataset> -c <config> -r <run> -g <grammra>'
+            sys.exit()
+
+        elif opt in ("-d", "--dataset"):
+            dataset = arg
+
+        elif opt in ("-c", "--config"):
+            config_file = arg
+
+        elif opt in ("-r", "--run"):
+            run = int(arg)
+
+        elif opt in ("-g", "--grammar"):
+            grammar = arg
+
+
+    error = False
+
+    #check if mandatory variables are all set
+    if dataset is None:
+        print 'The dataset (-d) parameter is mandatory.'
+        error = True
+
+    if config_file is None:
+        print 'The config. file parameter (-c) is mandatory.'
+        error = True
+
+    if grammar is None:
+        print 'The grammar (-g) parameter is mandatory.'
+        error = True
+
+    if error:
+        print 'f_denser.py -d <dataset> -c <config> -r <run> -g <grammar>'
         exit(-1)
 
-    in_run = int(argv[1])
+    #check if files exist
+    if not os.path.isfile(grammar):
+        print 'Grammar file does not exist.'
+        error = True
 
-    main(in_run)
+    if not os.path.isfile(config_file):
+        print 'Configuration file does not exist.'
+        error = True
+
+
+    if not error:
+        main(run, dataset, config_file, grammar)
+    else:
+        print 'f_denser.py -d <dataset> -c <config> -r <run> -g <grammar>'
+
+
+
+if __name__ == '__main__':
+    import sys, getopt
+
+    process_input(sys.argv[1:]) 

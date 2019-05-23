@@ -1,56 +1,55 @@
-from __future__ import print_function
-from random import randint, choice, random, uniform
+from random import randint, uniform
 
 
 class Grammar:
     """
-    Dynamic Structured Grammatical Evolution (DSGE) code. F-DENSER++ uses a BNF 
-    grammar to define the search space, and DSGE is applied to perform the 
-    genotype/phenotype mapping of the inner-level of the genotype.
+        Dynamic Structured Grammatical Evolution (DSGE) code. F-DENSER++ uses a BNF 
+        grammar to define the search space, and DSGE is applied to perform the 
+        genotype/phenotype mapping of the inner-level of the genotype.
 
 
-    Attributes
-    ----------
-    grammar : dict
-        object where the grammar is stored, and later used for initialisation,
-        and decoding of the individuals.
+        Attributes
+        ----------
+        grammar : dict
+            object where the grammar is stored, and later used for initialisation,
+            and decoding of the individuals.
 
 
-    Methods
-    -------
-    get_grammar(path)
-        Reads the grammar from a file
+        Methods
+        -------
+        get_grammar(path)
+            Reads the grammar from a file
 
-    read_grammar(path)
-        Auxiliary function of the get_grammar method; loads the grammar from a file
+        read_grammar(path)
+            Auxiliary function of the get_grammar method; loads the grammar from a file
 
-    parse_grammar(path)
-        Auxiliary fuction of the get_grammar method; parses the grammar to a dictionary
+        parse_grammar(path)
+            Auxiliary fuction of the get_grammar method; parses the grammar to a dictionary
 
-    _str_()
-        Prints the grammar in the BNF form
+        _str_()
+            Prints the grammar in the BNF form
 
-    initialise(start_symbol)
-        Creates a genotype, at random, starting from the input non-terminal symbol
+        initialise(start_symbol)
+            Creates a genotype, at random, starting from the input non-terminal symbol
 
-    initialise_recursive(symbol, prev_nt, genotype)
-        Auxiliary function of the initialise method; recursively expands the
-        non-terminal symbol
+        initialise_recursive(symbol, prev_nt, genotype)
+            Auxiliary function of the initialise method; recursively expands the
+            non-terminal symbol
 
-    decode(start_symbol, genotype)
-        Genotype to phenotype mapping.
+        decode(start_symbol, genotype)
+            Genotype to phenotype mapping.
 
-    decode_recursive(symbol, read_integers, genotype, phenotype)
-        Auxiliary function of the decode method; recursively applies the expansions
-        that are encoded in the genotype
+        decode_recursive(symbol, read_integers, genotype, phenotype)
+            Auxiliary function of the decode method; recursively applies the expansions
+            that are encoded in the genotype
     """
 
     def __init__(self, path):
         """
-        Parameters
-        ----------
-        path : str
-            Path to the BNF grammar file
+            Parameters
+            ----------
+            path : str
+                Path to the BNF grammar file
         """
         
         self.grammar = self.get_grammar(path)
@@ -58,18 +57,18 @@ class Grammar:
 
     def get_grammar(self, path):
         """
-        Read the grammar from a file.
+            Read the grammar from a file.
 
-        Parameters
-        ----------
-        path : str
-            Path to the BNF grammar file
+            Parameters
+            ----------
+            path : str
+                Path to the BNF grammar file
 
-        Returns
-        -------
-        grammar : dict
-            object where the grammar is stored, and later used for initialisation,
-            and decoding of the individuals
+            Returns
+            -------
+            grammar : dict
+                object where the grammar is stored, and later used for initialisation,
+                and decoding of the individuals
         """
 
         raw_grammar = self.read_grammar(path)
@@ -83,18 +82,18 @@ class Grammar:
 
     def read_grammar(self, path):
         """
-        Auxiliary function of the get_grammar method; loads the grammar from a file
+            Auxiliary function of the get_grammar method; loads the grammar from a file
 
-        Parameters
-        ----------
-        path : str
-            Path to the BNF grammar file
+            Parameters
+            ----------
+            path : str
+                Path to the BNF grammar file
 
-        Returns
-        -------
-        raw_grammar : list
-            list of strings, where each position is a line of the grammar file.
-            Returns None in case of failure opening the file.
+            Returns
+            -------
+            raw_grammar : list
+                list of strings, where each position is a line of the grammar file.
+                Returns None in case of failure opening the file.
         """
 
         try:
@@ -107,18 +106,18 @@ class Grammar:
 
     def parse_grammar(self, raw_grammar):
         """
-        Auxiliary fuction of the get_grammar method; parses the grammar to a dictionary
+            Auxiliary fuction of the get_grammar method; parses the grammar to a dictionary
 
-        Parameters
-        ----------
-        raw_grammar : list
-            list of strings, where each position is a line of the grammar file
+            Parameters
+            ----------
+            raw_grammar : list
+                list of strings, where each position is a line of the grammar file
 
-        Returns
-        -------
-        grammar : dict
-            object where the grammar is stored, and later used for initialisation,
-            and decoding of the individuals
+            Returns
+            -------
+            grammar : dict
+                object where the grammar is stored, and later used for initialisation,
+                and decoding of the individuals
         """
 
         grammar = {}
@@ -154,22 +153,22 @@ class Grammar:
                     else:
                         productions += ' '+symbol
                 productions += ' | '
-            print('<'+_key_+'> ::='+productions[:-3])
+            print '<'+_key_+'> ::='+productions[:-3]
 
 
     def initialise(self, start_symbol):
         """
-        Creates a genotype, at random, starting from the input non-terminal symbol
+            Creates a genotype, at random, starting from the input non-terminal symbol
 
-        Parameters
-        ----------
-        start_symbol : str
-            non-terminal symbol used as starting symbol for the grammatical expansion.
+            Parameters
+            ----------
+            start_symbol : str
+                non-terminal symbol used as starting symbol for the grammatical expansion.
 
-        Returns
-        -------
-        genotype : dict
-            DSGE genotype used for the inner-level of F-DENSER++
+            Returns
+            -------
+            genotype : dict
+                DSGE genotype used for the inner-level of F-DENSER++
         """
 
         genotype = {}
@@ -181,22 +180,22 @@ class Grammar:
 
     def initialise_recursive(self, symbol, prev_nt, genotype):
         """
-        Auxiliary function of the initialise method; recursively expands the
-        non-terminal symbol
+            Auxiliary function of the initialise method; recursively expands the
+            non-terminal symbol
 
-        Parameters
-        ----------
-        symbol : tuple
-            (non terminal symbol to expand : str, non-terminal : bool). 
-            Non-terminal is True in case the non-terminal symbol is a 
-            non-terminal, and False if the the non-terminal symbol str is
-            a terminal
+            Parameters
+            ----------
+            symbol : tuple
+                (non terminal symbol to expand : str, non-terminal : bool). 
+                Non-terminal is True in case the non-terminal symbol is a 
+                non-terminal, and False if the the non-terminal symbol str is
+                a terminal
 
-        prev_nt: str
-            non-terminal symbol used in the previous expansion
+            prev_nt: str
+                non-terminal symbol used in the previous expansion
 
-        genotype: dict
-            DSGE genotype used for the inner-level of F-DENSER++ 
+            genotype: dict
+                DSGE genotype used for the inner-level of F-DENSER++ 
 
         """
 
@@ -235,20 +234,20 @@ class Grammar:
 
     def decode(self, start_symbol, genotype):
         """
-        Genotype to phenotype mapping.
+            Genotype to phenotype mapping.
 
-        Parameters
-        ----------
-        start_symbol : str
-            non-terminal symbol used as starting symbol for the grammatical expansion
-        
-        genotype : dict
-            DSGE genotype used for the inner-level of F-DENSER++ 
+            Parameters
+            ----------
+            start_symbol : str
+                non-terminal symbol used as starting symbol for the grammatical expansion
+            
+            genotype : dict
+                DSGE genotype used for the inner-level of F-DENSER++ 
 
-        Returns
-        -------
-        phenotype : str
-            phenotype corresponding to the input genotype
+            Returns
+            -------
+            phenotype : str
+                phenotype corresponding to the input genotype
         """
 
         read_codons = dict.fromkeys(genotype.keys(), 0)
@@ -260,26 +259,25 @@ class Grammar:
 
     def decode_recursive(self, symbol, read_integers, genotype, phenotype):
         """
-        Auxiliary function of the decode method; recursively applies the expansions
-        that are encoded in the genotype
+            Auxiliary function of the decode method; recursively applies the expansions
+            that are encoded in the genotype
 
-        Parameters
-        ----------
-        symbol : tuple
-            (non terminal symbol to expand : str, non-terminal : bool). 
-            Non-terminal is True in case the non-terminal symbol is a 
-            non-terminal, and False if the the non-terminal symbol str is
-            a terminal
+            Parameters
+            ----------
+            symbol : tuple
+                (non terminal symbol to expand : str, non-terminal : bool). 
+                Non-terminal is True in case the non-terminal symbol is a 
+                non-terminal, and False if the the non-terminal symbol str is
+                a terminal
 
-        read_integers : dict
-            index of the next codon of the non-terminal genotype to be read
+            read_integers : dict
+                index of the next codon of the non-terminal genotype to be read
 
-        genotype : dict
-            DSGE genotype used for the inner-level of F-DENSER++ 
+            genotype : dict
+                DSGE genotype used for the inner-level of F-DENSER++ 
 
-        phenotype : str
-            phenotype corresponding to the input genotype
-
+            phenotype : str
+                phenotype corresponding to the input genotype
         """
 
         symbol, non_terminal = symbol
