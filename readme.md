@@ -49,7 +49,7 @@ The parameters are encoded in the production rules using the following format: [
 |       Dropout       |                                                          Rate                                                          |
 | Batch-Normalization |                                                            -                                                           |
 
-The current grammar example focuses on the simultaneous optimisation of the topoogy and learning. In case the user only intends to optimise the topology, the learning can be fixed by replacing the learning production rule by for example: \"<learning> ::= learning:gradient-descent lr:0.01 momentum:0.9 decay:0.0001 nesterov:True\". The same rationale applies for the topology.
+The current grammar example focuses on the simultaneous optimisation of the topoogy and learning. In case the user only intends to optimise the topology, the learning can be fixed by replacing the learning production rule by for example: \" \< learning \> ::= learning:gradient-descent lr:0.01 momentum:0.9 decay:0.0001 nesterov:True\". The same rationale applies for the topology.
 
 The required parameters, and layers can be easily changed / extended by adapting the function that performs the mapping from the phenotype into a keras interpretable model. See the next section for further details.
 
@@ -57,7 +57,7 @@ The required parameters, and layers can be easily changed / extended by adapting
 
 To add new layers (or simply change the mandatory parameters) one needs to add (or adapt) the mapping from the phenotype to the keras interpretable model. This can be easily performed by adding the necessary code to the units.py file, in the \"assemble\_network\" function of the Evaluator class (starting in line 244). The code is to be added between the \"#Create layers -- ADD NEW LAYERS HERE\" and \"#END ADD NEW LAYERS\" comments. To change the parameters of an already existing layer there is just the need to change the call to the keras layer constructor. To add new layers a keras layer constructor must be added, and the parameters passed to it. For example, to add a Depthwise seperable 2D convolution we would write the following code:
 ```python
-elif layer_type == 'sep_conv'
+elif layer_type == 'sep_conv':
   sep_conv = keras.layers.SeparableConv2D(filters = int(layer_params['num-filters'][0]),
                       kernel_size = (int(layer_params['kernel-size'][0]), int(layer_params['kernel-size'][0])),
                       strides = (int(layer_params['stride'][0]), int(layer_params['stride'][0])),
