@@ -1,6 +1,6 @@
-from svhn import load_svhn
-from cifar import load_cifar
-from tiny_imagenet import load_tiny_imagenet
+from datasets.svhn import load_svhn
+from datasets.cifar import load_cifar
+from datasets.tiny_imagenet import load_tiny_imagenet
 try:
     from sklearn.cross_validation import train_test_split
 except:
@@ -10,8 +10,8 @@ from multiprocessing import Pool
 import tensorflow as tf
 
 #dataset paths - change if the path is different
-SVHN = 'data/svhn'
-TINY_IMAGENET = 'data/tiny-imagenet-200'
+SVHN = 'datasets/data/svhn'
+TINY_IMAGENET = 'datasets/data/tiny-imagenet-200'
 
 def prepare_data(x_train, y_train, x_test, y_test, n_classes=10):
     """
