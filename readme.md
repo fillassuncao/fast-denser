@@ -49,7 +49,7 @@ The parameters are encoded in the production rules using the following format: [
 |       Dropout       |                                                          Rate                                                          |
 | Batch-Normalization |                                                            -                                                           |
 
-The current grammar example focuses on the simultaneous optimisation of the topoogy and learning. In case the user only intends to optimise the topology, the learning can be fixed by replacing the learning production rule by for example: \" \< learning \> ::= learning:gradient-descent lr:0.01 momentum:0.9 decay:0.0001 nesterov:True\". The same rationale applies for the topology.
+The current grammar example focuses on the simultaneous optimisation of the topoogy and learning. In case the user only intends to optimise the topology, the learning can be fixed by replacing the learning production rule by for example: \" \<learning\> ::= learning:gradient-descent lr:0.01 momentum:0.9 decay:0.0001 nesterov:True\". The same rationale applies for the topology.
 
 The required parameters, and layers can be easily changed / extended by adapting the function that performs the mapping from the phenotype into a keras interpretable model. See the next section for further details.
 
