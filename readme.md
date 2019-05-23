@@ -35,7 +35,7 @@ Currently this codebase only works with python 2. The following libraries are ne
 
 -g [mandatory] path to the grammar file to be used. Check example/modules.grammar for an example 
 
-### Grammar restrictions
+### Grammar
 
 The mapping procedure of the available codebase supports production rules that can encode either topology or learning evolutionary units. The layers must start by \"layer:layer\_type\" where layer\_type indicates the type of the layer, e.g., conv (for convolutional), or fc (for fully-connected). To the moment the available layer types are convolutional (conv), pooling (pool-max or pool-avg), fully-connected (fc), dropout (dropout), and batch-normalization (batch-norm). The learning production rules must start by \"learning:algorithm\", where the algorithm can be gradient-descent, adam, or rmsprop. An example of a grammar can be found in examples/modules.grammar. 
 
@@ -49,7 +49,25 @@ The parameters are encoded in the production rules using the following format: [
 |       Dropout       |                                                          Rate                                                          |
 | Batch-Normalization |                                                            -                                                           |
 
+The current grammar example focuses on the simultaneous optimisation of the topoogy and learning. In case the user only intends to optimise the topology, the learning can be fixed by replacing the learning production rule by for example: \"<learning> ::= learning:gradient-descent lr:0.01 momentum:0.9 decay:0.0001 nesterov:True\". The same rationale applies for the topology.
+
+The required parameters, and layers can be easily changed / extended by adapting the function that performs the mapping from the phenotype into a keras interpretable model. See the next section for further details.
+
 ### How to add new layers
+
+To add new layers (or simply change the mandatory parameters) one needs to add (or adapt) the mapping from the phenotype to the keras interpretable model. This can be easily performed by adding the necessary code to the units.py file, in the \"assemble\_network\" function of the Evaluator class (starting in line 244). The code is to be added between the \"#Create layers -- ADD NEW LAYERS HERE\" and \"#END ADD NEW LAYERS\" comments. To change the parameters of an already existing layer there is just the need to change the call to the keras layer constructor. To add new layers a keras layer constructor must be added, and the parameters passed to it. For example, to add a Depthwise seperable 2D convolution we would write the following code:
+```python
+elif layer_type == 'sep_conv'
+  sep_conv = keras.layers.SeparableConv2D(filters = int(layer_params['num-filters'][0]),
+                      kernel_size = (int(layer_params['kernel-size'][0]), int(layer_params['kernel-size'][0])),
+                      strides = (int(layer_params['stride'][0]), int(layer_params['stride'][0])),
+                      padding = padding=layer_params['padding'][0],
+                      dilation_rate = (int(layer_params['stride'][0]), int(layer_params['stride'][0])),
+                      activation = layer_params['act'][0], 
+                      use_bias = eval(layer_params['bias'][0]))
+    layers.append(sep_conv)
+```
+
 
 ### How to add new fitness functions
 
