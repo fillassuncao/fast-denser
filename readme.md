@@ -57,16 +57,18 @@ The required parameters, and layers can be easily changed / extended by adapting
 
 To add new layers (or simply change the mandatory parameters) one needs to add (or adapt) the mapping from the phenotype to the keras interpretable model. This can be easily performed by adding the necessary code to the units.py file, in the \"assemble\_network\" function of the Evaluator class (starting in line 244). The code is to be added between the \"#Create layers -- ADD NEW LAYERS HERE\" and \"#END ADD NEW LAYERS\" comments. To change the parameters of an already existing layer there is just the need to change the call to the keras layer constructor. To add new layers a keras layer constructor must be added, and the parameters passed to it. For example, to add a Depthwise seperable 2D convolution we would write the following code:
 ```python
-elif layer_type == 'sep_conv':
+elif layer_type == 'sep-conv':
   sep_conv = keras.layers.SeparableConv2D(filters = int(layer_params['num-filters'][0]),
                       kernel_size = (int(layer_params['kernel-size'][0]), int(layer_params['kernel-size'][0])),
                       strides = (int(layer_params['stride'][0]), int(layer_params['stride'][0])),
                       padding = padding=layer_params['padding'][0],
-                      dilation_rate = (int(layer_params['stride'][0]), int(layer_params['stride'][0])),
+                      dilation_rate = (int(layer_params['dilation-rate'][0]), int(layer_params['dilation-rate'][0])),
                       activation = layer_params['act'][0], 
                       use_bias = eval(layer_params['bias'][0]))
     layers.append(sep_conv)
 ```
+
+In addition, to enable the use of the above layers in evolution we would need to add a new production rule to the grammar: \"\<separable-conv\> ::= layer:sep-conv \[num-filters,int,1,32,2\56] \[kernel-size,int,1,2,5\] \[stride,int,1,1,3\] \<padding\>\ \[dilation-rate,int,1,1,3\] \<activation-function\> \<bias\>"
 
 
 ### How to add new fitness functions
