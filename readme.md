@@ -41,6 +41,10 @@ The example seeks for Convolutional Neural Networks (CNNs) for the classificatio
 
 `python f_denser.py -d fashion-mnist -c example/config.cfg -g example/cnn.grammar`
 
+### Docker image
+
+CPU and GPU docker images are available at https://hub.docker.com/r/fillassuncao/f-denser.
+
 ### Grammar
 
 The mapping procedure of the available codebase supports production rules that can encode either topology or learning evolutionary units. The layers must start by \"layer:layer\_type\" where layer\_type indicates the type of the layer, e.g., conv (for convolutional), or fc (for fully-connected). To the moment the available layer types are convolutional (conv), pooling (pool-max or pool-avg), fully-connected (fc), dropout (dropout), and batch-normalization (batch-norm). The learning production rules must start by \"learning:algorithm\", where the algorithm can be gradient-descent, adam, or rmsprop. An example of a grammar can be found in example/cnn.grammar. 
