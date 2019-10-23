@@ -7,7 +7,7 @@ import tensorflow
 import numpy as np
 from keras.callbacks import Callback, ModelCheckpoint
 import os
-from data import load_dataset
+from utilities.data import load_dataset
 
 DEBUG = False
 
