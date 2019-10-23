@@ -11,9 +11,9 @@ from shutil import copyfile
 from glob import glob
 import json
 from keras.preprocessing.image import ImageDataGenerator
-from fitness_metrics import * 
+from utilities.fitness_metrics import * 
 from jsmin import jsmin
-from data_augmentation import augmentation
+from utilities.data_augmentation import augmentation
 
 
 
