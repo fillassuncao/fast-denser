@@ -41,6 +41,7 @@ Currently this codebase only works with python 2. The following libraries are ne
 The units tests can be found in the f-denser/tests folder, and can be executed in the following way:
 
 `python -m python2.7 -m tests.test_utils`
+
 `python -m python2.7 -m tests.test_grammar`
 
 ### Usage example
