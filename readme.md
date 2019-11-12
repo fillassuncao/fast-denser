@@ -1,6 +1,6 @@
 # Fast-DENSER: Fast Deep Evolutionary Network Structured Representation
 
-Fast-DENSER is a new extension to Deep Evolutionary Network Structured Evolution (DENSER). The vast majority of NeuroEvolution methods that optimise Deep Artificial Neural Networks (DANNs) only evaluate the candidate solutions for a fixed amount of epochs; this makes it difficult to effectively assess the learning strategy, and requires the best generated network to be further trained after evolution. F-DENSER++ enables the training time of the candidate solutions to grow continuously as necessary, i.e., in the initial generations the candidate solutions are trained for shorter times, and as generations proceed it is expected that longer training cycles enable better performances. Consequently, the models discovered by F-DENSER++ are fully-trained DANNs, and are ready for deployment after evolution, without the need for further training. 
+Fast-DENSER is a new extension to Deep Evolutionary Network Structured Evolution (DENSER). The vast majority of NeuroEvolution methods that optimise Deep Artificial Neural Networks (DANNs) only evaluate the candidate solutions for a fixed amount of epochs; this makes it difficult to effectively assess the learning strategy, and requires the best generated network to be further trained after evolution. Fast-DENSER enables the training time of the candidate solutions to grow continuously as necessary, i.e., in the initial generations the candidate solutions are trained for shorter times, and as generations proceed it is expected that longer training cycles enable better performances. Consequently, the models discovered by Fast-DENSER are fully-trained DANNs, and are ready for deployment after evolution, without the need for further training. 
 
 ```
 @article{assunccao2019fast,
@@ -23,7 +23,14 @@ Fast-DENSER is a new extension to Deep Evolutionary Network Structured Evolution
 ### Requirements
 Currently this codebase only works with python 2. The following libraries are needed: tensorflow, keras, numpy, sklearn, scipy, and jsmin. 
 
-### Usage
+### Instalation
+To install Fast-DENSER as a python library the following steps should be performed: 
+
+`pip install -r requirements.txt`
+
+`python setup.py install`
+
+### Framework Usage
 
 `python -m fast_denser.engine -d <dataset> -c <config> -r <run> -g <grammar>`
 
@@ -34,6 +41,19 @@ Currently this codebase only works with python 2. The following libraries are ne
 -r [optional] the the run to be performed [0-14]
 
 -g [mandatory] path to the grammar file to be used. Check example/modules.grammar for an example
+
+
+### Library Usage
+
+You can also import Fast-DENSER as a usual python library. An example of the search of CNNs for the fashion-mnist dataset is presented next.
+
+```python
+import fast_denser
+
+fast_denser.search(0, 'fashion-mnist', 'example/config.json', 'example/cnn.grammar')
+```
+
+The first parameter specifies the run, the second the dataset, the third the configuration file, and the last the grammar. 
 
 
 ### Unit tests
